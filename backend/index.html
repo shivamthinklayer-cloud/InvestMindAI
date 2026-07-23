@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IMAI — AI Stock Analyzer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:      #07090f;
+      --bg2:     #0c1018;
+      --bg3:     #111820;
+      --border:  #1a2535;
+      --accent:  #00d4ff;
+      --green:   #00e396;
+      --red:     #ff4560;
+      --gold:    #f5a623;
+      --text:    #dde6f0;
+      --text2:   #6b8099;
+      --text3:   #35495e;
+      --mono:    'Space Mono', monospace;
+      --sans:    'Syne', sans-serif;
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+    }
+
+    /* Grid overlay */
+    body::before {
+      content:'';
+      position:fixed; inset:0; z-index:0; pointer-events:none;
+      background-image:
+        linear-gradient(rgba(0,212,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position:sticky; top:0; z-index:100;
+      padding:14px 32px;
+      display:flex; align-items:center; justify-content:space-between;
+      background:rgba(7,9,15,.92);
+      backdrop-filter:blur(12px);
+      border-bottom:1px solid var(--border);
+    }
+
+    .logo {
+      display:flex; align-items:center; gap:10px;
+    }
+    .logo-mark {
+      width:32px; height:32px; border-radius:7px;
+      background:linear-gradient(135deg,var(--accent),var(--green));
+      display:flex; align-items:center; justify-content:center;
+      font-size:16px; font-weight:700; color:#07090f;
+    }
+    .logo-name {
+      font-family:var(--sans); font-weight:800;
+      font-size:20px; letter-spacing:4px;
+      background:linear-gradient(90deg,var(--accent),var(--green));
+      -webkit-background-clip:text; background-clip:text;
+      -webkit-text-fill-color:transparent;
+    }
+    .header-sub {
+      font-family:var(--mono); font-size:10px;
+      color:var(--text3); letter-spacing:2px;
+    }
+    .status-dot {
+      display:flex; align-items:center; gap:6px;
+      font-family:var(--mono); font-size:11px; color:var(--text2);
+    }
+    .dot {
+      width:6px; height:6px; border-radius:50%;
+      background:var(--green);
+      box-shadow:0 0 8px var(--green);
+      animation:blink 2s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── CONTAINER ── */
+    .wrap {
+      position:relative; z-index:1;
+      max-width:1100px; margin:0 auto;
+      padding:48px 24px;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      text-align:center; margin-bottom:40px;
+      animation:rise .6s ease both;
+    }
+    .hero-tag {
+      display:inline-block;
+      font-family:var(--mono); font-size:11px; letter-spacing:3px;
+      color:var(--accent); border:1px solid rgba(0,212,255,.25);
+      padding:4px 14px; border-radius:20px; margin-bottom:16px;
+    }
+    .hero h1 {
+      font-size:clamp(26px,5vw,50px); font-weight:800;
+      line-height:1.1; letter-spacing:-1px; margin-bottom:10px;
+    }
+    .hero h1 em {
+      font-style:normal;
+      background:linear-gradient(90deg,var(--accent),var(--green));
+      -webkit-background-clip:text; background-clip:text;
+      -webkit-text-fill-color:transparent;
+    }
+    .hero p {
+      font-family:var(--mono); font-size:12px;
+      color:var(--text2); letter-spacing:1px;
+    }
+
+    /* ── INPUT CARD ── */
+    .input-card {
+      background:var(--bg2); border:1px solid var(--border);
+      border-radius:14px; padding:28px;
+      margin-bottom:20px;
+      animation:rise .7s ease both;
+    }
+    .fields {
+      display:grid;
+      grid-template-columns:1fr 1.5fr 1fr auto;
+      gap:14px; align-items:end;
+    }
+    label {
+      display:block; font-family:var(--mono);
+      font-size:10px; letter-spacing:2px;
+      color:var(--text2); text-transform:uppercase; margin-bottom:6px;
+    }
+    input, select {
+      width:100%; background:var(--bg3);
+      border:1px solid var(--border); border-radius:8px;
+      padding:11px 14px; color:var(--text);
+      font-family:var(--mono); font-size:13px;
+      outline:none; transition:border-color .2s, box-shadow .2s;
+      appearance:none;
+    }
+    input:focus, select:focus {
+      border-color:var(--accent);
+      box-shadow:0 0 0 3px rgba(0,212,255,.1);
+    }
+    select option { background:var(--bg3); }
+
+    .btn {
+      padding:11px 26px; border:none; border-radius:8px;
+      background:linear-gradient(135deg,var(--accent),var(--green));
+      color:#07090f; font-family:var(--sans);
+      font-weight:700; font-size:14px; letter-spacing:1px;
+      cursor:pointer; white-space:nowrap;
+      transition:opacity .2s, transform .1s;
+    }
+    .btn:hover  { opacity:.88; transform:translateY(-1px); }
+    .btn:active { transform:translateY(0); }
+    .btn:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+
+    /* Quick picks */
+    .picks {
+      display:flex; align-items:center; gap:8px;
+      flex-wrap:wrap; margin-top:14px;
+    }
+    .picks-label {
+      font-family:var(--mono); font-size:10px;
+      color:var(--text3); letter-spacing:1px;
+    }
+    .chip {
+      padding:4px 12px; border-radius:20px;
+      background:var(--bg3); border:1px solid var(--border);
+      font-family:var(--mono); font-size:11px; color:var(--text2);
+      cursor:pointer; transition:all .15s;
+    }
+    .chip:hover { border-color:var(--accent); color:var(--accent); }
+
+    /* ── LOADING ── */
+    #loading {
+      display:none; text-align:center;
+      padding:56px 24px; animation:rise .4s ease;
+    }
+    #loading.show { display:block; }
+
+    .loading-title {
+      font-size:clamp(20px,4vw,36px);
+      font-weight:800; margin:12px 0 4px;
+    }
+    .loading-sub {
+      font-family:var(--mono); font-size:11px;
+      color:var(--text2); letter-spacing:1px; margin-bottom:20px;
+    }
+    .progress-track {
+      width:280px; height:2px; background:var(--border);
+      border-radius:2px; margin:0 auto 8px; overflow:hidden;
+    }
+    .progress-fill {
+      height:100%; width:0%;
+      background:linear-gradient(90deg,var(--accent),var(--green));
+      border-radius:2px; transition:width .6s ease;
+    }
+    .progress-label {
+      font-family:var(--mono); font-size:11px;
+      color:var(--accent); letter-spacing:1px;
+      animation:blink 1.4s infinite;
+    }
+    .steps-list {
+      list-style:none; margin-top:24px;
+      display:inline-flex; flex-direction:column; gap:8px; text-align:left;
+    }
+    .step-item {
+      display:flex; align-items:center; gap:10px;
+      font-family:var(--mono); font-size:11px; color:var(--text3);
+      transition:color .3s;
+    }
+    .step-item.done   { color:var(--green); }
+    .step-item.active { color:var(--accent); }
+    .step-pip {
+      width:5px; height:5px; border-radius:50%;
+      background:currentColor; flex-shrink:0;
+    }
+    .step-item.active .step-pip { animation:blink .9s infinite; }
+
+    /* ── ERROR ── */
+    #error {
+      display:none; background:rgba(255,69,96,.06);
+      border:1px solid rgba(255,69,96,.25); border-radius:12px;
+      padding:20px; text-align:center; margin-bottom:16px;
+    }
+    #error.show { display:block; }
+    #error p { font-family:var(--mono); font-size:12px; color:var(--red); }
+
+    /* ── RESULTS ── */
+    #results { display:none; }
+    #results.show { display:block; animation:rise .5s ease; }
+
+    /* Verdict banner */
+    .vbanner {
+      border-radius:14px; padding:28px 32px;
+      margin-bottom:16px; border:2px solid var(--border);
+      position:relative; overflow:hidden;
+    }
+    .vbanner::after {
+      content:''; position:absolute; inset:0;
+      opacity:.06; pointer-events:none;
+    }
+    .vbanner.STRONG-BUY  { border-color:var(--green);  }
+    .vbanner.BUY         { border-color:#00c97a;        }
+    .vbanner.HOLD        { border-color:var(--gold);    }
+    .vbanner.SELL        { border-color:#ff8c42;        }
+    .vbanner.STRONG-SELL { border-color:var(--red);     }
+    .vbanner.STRONG-BUY::after  { background:var(--green); }
+    .vbanner.BUY::after         { background:#00c97a;       }
+    .vbanner.HOLD::after        { background:var(--gold);   }
+    .vbanner.SELL::after        { background:#ff8c42;       }
+    .vbanner.STRONG-SELL::after { background:var(--red);    }
+
+    .vtop {
+      display:flex; justify-content:space-between;
+      align-items:flex-start; gap:20px; flex-wrap:wrap;
+    }
+    .vlabel {
+      font-family:var(--mono); font-size:10px;
+      letter-spacing:3px; color:var(--text2); margin-bottom:6px;
+    }
+    .vtext {
+      font-size:clamp(28px,5vw,48px); font-weight:800;
+      letter-spacing:-1px; line-height:1;
+    }
+    .vsummary {
+      margin-top:10px; font-size:14px; color:var(--text2);
+      line-height:1.65; max-width:580px;
+    }
+    .vbadges { display:flex; flex-direction:column; gap:8px; }
+    .badge {
+      background:rgba(255,255,255,.04);
+      border:1px solid var(--border); border-radius:8px;
+      padding:8px 16px; text-align:right; min-width:110px;
+    }
+    .badge-l { font-family:var(--mono); font-size:9px; color:var(--text3); letter-spacing:1px; }
+    .badge-v { font-family:var(--mono); font-size:17px; font-weight:700; }
+
+    /* Action box */
+    .action-box {
+      background:linear-gradient(135deg,rgba(0,212,255,.04),rgba(0,227,150,.04));
+      border:1px solid rgba(0,212,255,.18); border-radius:12px;
+      padding:18px 22px; margin-bottom:16px;
+    }
+    .action-lbl {
+      font-family:var(--mono); font-size:10px;
+      letter-spacing:2px; color:var(--accent); margin-bottom:6px;
+    }
+    .action-txt { font-size:14px; color:var(--text); line-height:1.6; }
+
+    /* Grid layouts */
+    .g2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+    .g3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:14px; }
+    .g4 { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px; }
+
+    .card {
+      background:var(--bg2); border:1px solid var(--border);
+      border-radius:12px; padding:18px;
+    }
+    .card-hd {
+      font-family:var(--mono); font-size:10px;
+      letter-spacing:2px; color:var(--text3);
+      text-transform:uppercase; margin-bottom:14px;
+      padding-bottom:10px; border-bottom:1px solid var(--border);
+    }
+
+    /* Strategy cards */
+    .strat-card {
+      background:var(--bg2); border:1px solid var(--border);
+      border-radius:10px; padding:14px; text-align:center;
+    }
+    .strat-name {
+      font-family:var(--mono); font-size:9px;
+      color:var(--text3); letter-spacing:2px; margin-bottom:6px;
+    }
+    .strat-rec { font-weight:700; font-size:13px; letter-spacing:.5px; }
+
+    /* Score bars */
+    .srow { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+    .srow:last-child { margin-bottom:0; }
+    .slabel { font-family:var(--mono); font-size:11px; color:var(--text2); width:110px; flex-shrink:0; }
+    .strack { flex:1; height:3px; background:var(--border); border-radius:3px; overflow:hidden; }
+    .sfill  { height:100%; border-radius:3px; background:linear-gradient(90deg,var(--accent),var(--green)); transition:width 1.2s ease; }
+    .sval   { font-family:var(--mono); font-size:12px; color:var(--text); width:24px; text-align:right; }
+
+    /* Metric rows */
+    .mrow {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:7px 0; border-bottom:1px solid rgba(26,37,53,.6);
+    }
+    .mrow:last-child { border-bottom:none; }
+    .mlbl { font-family:var(--mono); font-size:11px; color:var(--text2); }
+    .mval { font-family:var(--mono); font-size:12px; color:var(--text); font-weight:700; }
+
+    /* Returns */
+    .ret-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
+    .ret-item { background:var(--bg3); border-radius:8px; padding:12px 6px; text-align:center; }
+    .ret-p { font-family:var(--mono); font-size:9px; color:var(--text3); margin-bottom:4px; }
+    .ret-v { font-family:var(--mono); font-size:13px; font-weight:700; }
+    .pos { color:var(--green); }
+    .neg { color:var(--red); }
+    .neu { color:var(--text2); }
+
+    /* Targets */
+    .targets { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .titem { background:var(--bg3); border-radius:10px; padding:16px; text-align:center; }
+    .tlbl  { font-family:var(--mono); font-size:9px; color:var(--text3); letter-spacing:1px; margin-bottom:6px; }
+    .tval  { font-family:var(--mono); font-size:20px; font-weight:700; }
+
+    /* Bull Bear */
+    .bb { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+    .bull { background:rgba(0,227,150,.04); border:1px solid rgba(0,227,150,.15); border-radius:12px; padding:18px; }
+    .bear { background:rgba(255,69,96,.04);  border:1px solid rgba(255,69,96,.15);  border-radius:12px; padding:18px; }
+    .bb-hd { font-family:var(--mono); font-size:10px; letter-spacing:2px; margin-bottom:10px; }
+    .bull .bb-hd { color:var(--green); }
+    .bear .bb-hd { color:var(--red);   }
+    .bb-txt { font-size:13px; color:var(--text2); line-height:1.65; }
+
+    /* Lists */
+    ul.ilist { list-style:none; }
+    ul.ilist li {
+      display:flex; gap:8px; align-items:flex-start;
+      padding:6px 0; font-size:13px; color:var(--text2);
+      border-bottom:1px solid rgba(26,37,53,.4);
+    }
+    ul.ilist li:last-child { border-bottom:none; }
+    ul.ilist li::before { content:'→'; color:var(--accent); font-family:var(--mono); font-size:11px; flex-shrink:0; margin-top:1px; }
+
+    /* Sentiment bar */
+    .sent-score { font-family:var(--mono); font-size:24px; font-weight:700; }
+    .sent-lbl   { font-family:var(--mono); font-size:13px; font-weight:700; }
+    .sent-track { height:6px; background:var(--border); border-radius:6px; overflow:hidden; margin:10px 0 5px; }
+    .sent-fill  { height:100%; border-radius:6px; transition:width 1.2s ease; }
+    .sent-axis  { display:flex; justify-content:space-between; font-family:var(--mono); font-size:9px; color:var(--text3); }
+    .sent-txt   { font-size:12px; color:var(--text2); line-height:1.6; margin-top:8px; }
+
+    /* Animations */
+    @keyframes rise {
+      from { opacity:0; transform:translateY(18px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    @media (max-width:768px) {
+      .fields    { grid-template-columns:1fr; }
+      .g2,.g3,.g4 { grid-template-columns:1fr; }
+      .bb        { grid-template-columns:1fr; }
+      .ret-grid  { grid-template-columns:repeat(3,1fr); }
+      .targets   { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-mark">⚡</div>
+    <div class="logo-name">IMAI</div>
+  </div>
+  <div class="header-sub">AI STOCK ANALYSIS ENGINE</div>
+  <div class="status-dot"><div class="dot"></div> LIVE</div>
+</header>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-tag">7 AI MODELS · REAL DATA · INSTANT VERDICT</div>
+    <h1>Analyze Any Stock with <em>AI Intelligence</em></h1>
+    <p>// sentiment · technicals · fundamentals · strategies · final verdict</p>
+  </div>
+
+  <!-- INPUT -->
+  <div class="input-card">
+    <div class="fields">
+      <div>
+        <label>NSE Ticker</label>
+        <input id="inp-ticker" type="text" placeholder="TCS.NS" value="TCS.NS"/>
+      </div>
+      <div>
+        <label>Company Name</label>
+        <input id="inp-name" type="text" placeholder="Tata Consultancy Services" value="Tata Consultancy Services"/>
+      </div>
+      <div>
+        <label>Your Intent</label>
+        <select id="inp-intent">
+          <option value="Want to buy">Want to Buy</option>
+          <option value="Already bought">Already Bought</option>
+          <option value="Want to sell">Want to Sell</option>
+        </select>
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button class="btn" id="analyzeBtn" onclick="startAnalysis()">ANALYZE →</button>
+      </div>
+    </div>
+    <div class="picks">
+      <span class="picks-label">QUICK →</span>
+      <div class="chip" onclick="pick('RELIANCE.NS','Reliance Industries')">RELIANCE</div>
+      <div class="chip" onclick="pick('INFY.NS','Infosys')">INFY</div>
+      <div class="chip" onclick="pick('HDFCBANK.NS','HDFC Bank')">HDFCBANK</div>
+      <div class="chip" onclick="pick('WIPRO.NS','Wipro')">WIPRO</div>
+      <div class="chip" onclick="pick('TATAMOTORS.NS','Tata Motors')">TATAMOTORS</div>
+      <div class="chip" onclick="pick('ICICIBANK.NS','ICICI Bank')">ICICIBANK</div>
+    </div>
+  </div>
+
+  <!-- ERROR -->
+  <div id="error"><p id="error-msg">Something went wrong.</p></div>
+
+  <!-- LOADING -->
+  <div id="loading">
+    <p style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:3px">ANALYZING</p>
+    <div class="loading-title" id="ld-name"></div>
+    <div class="loading-sub"   id="ld-intent"></div>
+    <div class="progress-track"><div class="progress-fill" id="prog"></div></div>
+    <div class="progress-label" id="prog-lbl">INITIALIZING...</div>
+    <ul class="steps-list" id="steps-list"></ul>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results">
+
+    <!-- Verdict -->
+    <div class="vbanner" id="vbanner">
+      <div class="vtop">
+        <div>
+          <div class="vlabel">FINAL VERDICT</div>
+          <div class="vtext" id="v-text">—</div>
+          <div class="vsummary" id="v-summary">—</div>
+        </div>
+        <div class="vbadges">
+          <div class="badge">
+            <div class="badge-l">CONFIDENCE</div>
+            <div class="badge-v" id="v-conf">—</div>
+          </div>
+          <div class="badge">
+            <div class="badge-l">RISK</div>
+            <div class="badge-v" id="v-risk">—</div>
+          </div>
+          <div class="badge">
+            <div class="badge-l">HORIZON</div>
+            <div class="badge-v" id="v-horizon" style="font-size:12px">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action -->
+    <div class="action-box">
+      <div class="action-lbl">⚡ RECOMMENDED ACTION</div>
+      <div class="action-txt" id="v-action">—</div>
+    </div>
+
+    <!-- Strategy votes -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-hd">STRATEGY VOTES</div>
+      <div class="g4">
+        <div class="strat-card"><div class="strat-name">CONSERVATIVE</div><div class="strat-rec" id="sv-con">—</div></div>
+        <div class="strat-card"><div class="strat-name">GROWTH</div><div class="strat-rec" id="sv-gro">—</div></div>
+        <div class="strat-card"><div class="strat-name">EMOTIONAL</div><div class="strat-rec" id="sv-emo">—</div></div>
+        <div class="strat-card"><div class="strat-name">VALUE</div><div class="strat-rec" id="sv-val">—</div></div>
+      </div>
+    </div>
+
+    <!-- Scores + Sentiment -->
+    <div class="g2">
+      <div class="card">
+        <div class="card-hd">AI SCORES</div>
+        <div id="scores-box"></div>
+      </div>
+      <div class="card">
+        <div class="card-hd">NEWS SENTIMENT</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <span class="sent-score" id="sent-score">—</span>
+          <span class="sent-lbl"   id="sent-lbl">—</span>
+        </div>
+        <div class="sent-track"><div class="sent-fill" id="sent-fill"></div></div>
+        <div class="sent-axis"><span>BAD</span><span>NEUTRAL</span><span>GOOD</span></div>
+        <div class="sent-txt" id="sent-txt">—</div>
+      </div>
+    </div>
+
+    <!-- Price · Technicals · Fundamentals -->
+    <div class="g3">
+      <div class="card">
+        <div class="card-hd">PRICE INFO</div>
+        <div id="price-box"></div>
+      </div>
+      <div class="card">
+        <div class="card-hd">TECHNICALS</div>
+        <div id="tech-box"></div>
+      </div>
+      <div class="card">
+        <div class="card-hd">FUNDAMENTALS</div>
+        <div id="fund-box"></div>
+      </div>
+    </div>
+
+    <!-- Returns -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-hd">HISTORICAL RETURNS</div>
+      <div class="ret-grid" id="ret-grid"></div>
+    </div>
+
+    <!-- Price Targets -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-hd">PRICE TARGETS</div>
+      <div class="targets" id="targets"></div>
+    </div>
+
+    <!-- Bull / Bear -->
+    <div class="bb">
+      <div class="bull">
+        <div class="bb-hd">▲ BULL CASE</div>
+        <div class="bb-txt" id="bull">—</div>
+      </div>
+      <div class="bear">
+        <div class="bb-hd">▼ BEAR CASE</div>
+        <div class="bb-txt" id="bear">—</div>
+      </div>
+    </div>
+
+    <!-- Catalysts + Risks -->
+    <div class="g2">
+      <div class="card">
+        <div class="card-hd">KEY CATALYSTS</div>
+        <ul class="ilist" id="catalysts"></ul>
+      </div>
+      <div class="card">
+        <div class="card-hd">KEY RISKS</div>
+        <ul class="ilist" id="risks"></ul>
+      </div>
+    </div>
+
+  </div><!-- #results -->
+</div><!-- .wrap -->
+
+<script>
+  // ── All API calls go to same server (no hardcoded port) ──
+  const API = window.location.origin;
+
+  const STEPS = [
+    "Fetching stock data & news",
+    "Analyzing news sentiment",
+    "Running technical analysis",
+    "Running conservative strategy",
+    "Running growth strategy",
+    "Running emotional strategy",
+    "Running value strategy",
+    "Generating final verdict",
+  ];
+
+  let stepTimer = null, stepIdx = 0;
+
+  function pick(ticker, name) {
+    document.getElementById("inp-ticker").value = ticker;
+    document.getElementById("inp-name").value   = name;
+  }
+
+  function verdictClass(v) {
+    return (v || "HOLD").toUpperCase().replace(/ /g, "-");
+  }
+
+  function verdictColor(v) {
+    const m = {
+      "STRONG BUY":  "var(--green)",
+      "BUY":         "#00c97a",
+      "HOLD":        "var(--gold)",
+      "SELL":        "#ff8c42",
+      "STRONG SELL": "var(--red)",
+    };
+    return m[(v||"HOLD").toUpperCase()] || "var(--text)";
+  }
+
+  function recColor(v) {
+    return verdictColor(v);
+  }
+
+  function fv(v, suf="") {
+    if (v === null || v === undefined || v === "N/A" || v === "None" || v === "") return "N/A";
+    return v + suf;
+  }
+
+  function retColor(v) {
+    if (!v || v === "N/A") return "neu";
+    return parseFloat(v) >= 0 ? "pos" : "neg";
+  }
+
+  function mrow(l, v) {
+    return `<div class="mrow"><span class="mlbl">${l}</span><span class="mval">${v}</span></div>`;
+  }
+
+  // ── Loading ──
+  function showLoading(name, intent) {
+    document.getElementById("ld-name").textContent   = name;
+    document.getElementById("ld-intent").textContent = `// ${intent.toUpperCase()}`;
+    document.getElementById("prog").style.width      = "5%";
+    document.getElementById("prog-lbl").textContent  = "INITIALIZING...";
+
+    const list = document.getElementById("steps-list");
+    list.innerHTML = STEPS.map((s, i) =>
+      `<li class="step-item" id="stp-${i}"><div class="step-pip"></div>${s}</li>`
+    ).join("");
+
+    stepIdx = 0;
+    document.getElementById("stp-0").classList.add("active");
+
+    stepTimer = setInterval(() => {
+      if (stepIdx < STEPS.length - 1) {
+        document.getElementById(`stp-${stepIdx}`).classList.replace("active","done");
+        stepIdx++;
+        document.getElementById(`stp-${stepIdx}`).classList.add("active");
+        document.getElementById("prog-lbl").textContent = STEPS[stepIdx].toUpperCase() + "...";
+        document.getElementById("prog").style.width = Math.round(((stepIdx+1)/STEPS.length)*88) + "%";
+      }
+    }, 7500);
+
+    document.getElementById("loading").classList.add("show");
+  }
+
+  function hideLoading() {
+    clearInterval(stepTimer);
+    document.getElementById("prog").style.width = "100%";
+    STEPS.forEach((_,i) => {
+      const el = document.getElementById(`stp-${i}`);
+      if (el) { el.classList.remove("active"); el.classList.add("done"); }
+    });
+    setTimeout(() => document.getElementById("loading").classList.remove("show"), 400);
+  }
+
+  // ── Main ──
+  async function startAnalysis() {
+    const ticker = document.getElementById("inp-ticker").value.trim();
+    const name   = document.getElementById("inp-name").value.trim();
+    const intent = document.getElementById("inp-intent").value;
+
+    if (!ticker || !name) { alert("Please fill in ticker and company name."); return; }
+
+    // Reset UI
+    document.getElementById("results").classList.remove("show");
+    document.getElementById("error").classList.remove("show");
+    document.getElementById("analyzeBtn").disabled = true;
+    showLoading(name, intent);
+
+    try {
+      const res  = await fetch(`${API}/api/analyze`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ ticker, stock_name: name, user_option: intent }),
+      });
+      const json = await res.json();
+
+      hideLoading();
+
+      if (json.status === "error") {
+        document.getElementById("error-msg").textContent = json.message || "Analysis failed.";
+        document.getElementById("error").classList.add("show");
+      } else {
+        renderResults(json.data);
+      }
+
+    } catch (err) {
+      hideLoading();
+      document.getElementById("error-msg").textContent =
+        `Cannot reach server. Make sure python main.py is running. (${err.message})`;
+      document.getElementById("error").classList.add("show");
+    } finally {
+      document.getElementById("analyzeBtn").disabled = false;
+    }
+  }
+
+  // ── Render ──
+  function renderResults(d) {
+    // Verdict
+    const vc = verdictClass(d.final_verdict);
+    const vcolor = verdictColor(d.final_verdict);
+    const banner = document.getElementById("vbanner");
+    banner.className = `vbanner ${vc}`;
+    document.getElementById("v-text").textContent    = d.final_verdict || "N/A";
+    document.getElementById("v-text").style.color    = vcolor;
+    document.getElementById("v-summary").textContent = d.detailed_reasoning || d.one_line_summary || "N/A";
+    document.getElementById("v-conf").textContent    = `${d.confidence || "?"}/10`;
+    document.getElementById("v-risk").textContent    = d.risk_rating   || "N/A";
+    document.getElementById("v-horizon").textContent = d.time_horizon  || "N/A";
+
+    // Action
+    document.getElementById("v-action").textContent = d.action_for_user || "N/A";
+
+    // Strategy votes
+    const sv = d.strategy_votes || {};
+    [["sv-con","conservative"],["sv-gro","growth"],["sv-emo","emotional"],["sv-val","value"]].forEach(([id,k]) => {
+      const el = document.getElementById(id);
+      el.textContent  = sv[k] || "N/A";
+      el.style.color  = recColor(sv[k]);
+    });
+
+    // Scores
+    const sc = d.scores || {};
+    document.getElementById("scores-box").innerHTML = [
+      {l:"Sentiment",   k:"sentiment_score"},
+      {l:"Fundamental", k:"fundamental_score"},
+      {l:"Technical",   k:"technical_score"},
+      {l:"Overall",     k:"overall_score"},
+    ].map(s => {
+      const v = sc[s.k] || 0;
+      return `<div class="srow">
+        <span class="slabel">${s.l}</span>
+        <div class="strack"><div class="sfill" style="width:${v*10}%"></div></div>
+        <span class="sval">${v}</span>
+      </div>`;
+    }).join("");
+
+    // Sentiment
+    const snt = d.sentiment || {};
+    const ss  = snt.score || 0;
+    document.getElementById("sent-score").textContent = `${ss}/10`;
+    const sl = snt.label || "N/A";
+    document.getElementById("sent-lbl").textContent  = sl;
+    document.getElementById("sent-lbl").style.color  =
+      sl==="GOOD" ? "var(--green)" : sl==="BAD" ? "var(--red)" : "var(--gold)";
+    document.getElementById("sent-fill").style.width      = `${ss*10}%`;
+    document.getElementById("sent-fill").style.background =
+      ss>=7 ? "var(--green)" : ss>=4 ? "var(--gold)" : "var(--red)";
+    document.getElementById("sent-txt").textContent = snt.summary || "N/A";
+
+    // Price
+    const pr = d.price || {};
+    document.getElementById("price-box").innerHTML = [
+      mrow("Current Price", `₹${fv(pr.current)}`),
+      mrow("52W High",      `₹${fv(pr.week52_high)}`),
+      mrow("52W Low",       `₹${fv(pr.week52_low)}`),
+    ].join("");
+
+    // Technicals
+    const tc = d.technicals || {};
+    document.getElementById("tech-box").innerHTML = [
+      mrow("RSI (14)",  `${fv(tc.rsi)} → ${tc.rsi_signal||"N/A"}`),
+      mrow("MACD",      tc.macd_trend||"N/A"),
+      mrow("Trend",     tc.trend||"N/A"),
+      mrow("MA Cross",  tc.ma_cross||"N/A"),
+    ].join("");
+
+    // Fundamentals
+    const fn = d.fundamentals || {};
+    document.getElementById("fund-box").innerHTML = [
+      mrow("PE Ratio",    fv(fn.pe_ratio)),
+      mrow("PB Ratio",    fv(fn.pb_ratio)),
+      mrow("ROE",         fv(fn.roe,"%")),
+      mrow("Debt/Equity", fv(fn.debt_equity)),
+      mrow("Market Cap",  `₹${fv(fn.market_cap)} Cr`),
+    ].join("");
+
+    // Returns
+    const rt = d.returns || {};
+    document.getElementById("ret-grid").innerHTML = [
+      {p:"1M",v:rt["1_month"]}, {p:"3M",v:rt["3_month"]},
+      {p:"6M",v:rt["6_month"]}, {p:"1Y",v:rt["1_year"]},
+      {p:"3Y",v:rt["3_year"]},  {p:"5Y",v:rt["5_year"]},
+    ].map(r => `<div class="ret-item">
+      <div class="ret-p">${r.p}</div>
+      <div class="ret-v ${retColor(r.v)}">${r.v!=null&&r.v!="N/A" ? r.v+"%" : "N/A"}</div>
+    </div>`).join("");
+
+    // Targets
+    const pt = d.price_targets || {};
+    document.getElementById("targets").innerHTML = `
+      <div class="titem">
+        <div class="tlbl">SHORT TERM (3-6M)</div>
+        <div class="tval" style="color:var(--green)">${fv(pt.target_1)}</div>
+      </div>
+      <div class="titem">
+        <div class="tlbl">LONG TERM (1-2Y)</div>
+        <div class="tval" style="color:var(--accent)">${fv(pt.target_2)}</div>
+      </div>
+      <div class="titem">
+        <div class="tlbl">STOP LOSS</div>
+        <div class="tval" style="color:var(--red)">${fv(pt.stop_loss)}</div>
+      </div>`;
+
+    // Bull / Bear
+    document.getElementById("bull").textContent = d.bull_case || "N/A";
+    document.getElementById("bear").textContent = d.bear_case || "N/A";
+
+    // Catalysts
+    const cats = d.key_catalysts || [];
+    document.getElementById("catalysts").innerHTML =
+      cats.length ? cats.map(c=>`<li>${c}</li>`).join("") : "<li>No catalysts identified</li>";
+
+    // Risks
+    const risks = d.key_risks || [];
+    document.getElementById("risks").innerHTML =
+      risks.length ? risks.map(r=>`<li>${r}</li>`).join("") : "<li>No risks identified</li>";
+
+    // Show
+    const res = document.getElementById("results");
+    res.classList.add("show");
+    res.scrollIntoView({ behavior:"smooth", block:"start" });
+  }
+</script>
+</body>
+</html>
